@@ -21,6 +21,7 @@ payload = {"filter": {"property": "Date", "date": {"on_or_after": today.strftime
 response = requests.post(url, json=payload, headers=headers)
 data = response.json()
 
+
 # Separate lists for today & upcoming client meetings
 today_tasks = []
 client_meetings = []
@@ -28,10 +29,17 @@ client_meetings = []
 for entry in data["results"]:
     # Extract date
     date_start_raw = entry["properties"]["Date"]["date"]["start"]
+    if date_start_raw:
+        date_start = datetime.fromisoformat(date_start_raw)
+    # Strip timezone
+    date_start = date_start.replace(tzinfo=None)
+else:
+    date_start = None
     date_end_raw = entry["properties"]["Date"]["date"]["end"]
 
     date_start = datetime.fromisoformat(date_start_raw) if date_start_raw else None
     date_end = datetime.fromisoformat(date_end_raw).strftime("%I:%M %p") if date_end_raw else "No End Time"
+
 
     # Extract project name from custom emoji
     icon_data = entry.get("icon", {})
@@ -45,7 +53,12 @@ for entry in data["results"]:
     title = entry["properties"]["Title / Reference Material (if any)"]["title"][0]["text"]["content"]
 
     # Extract event type
-    event_type = entry["properties"]["Event Type"]["select"]["name"]
+    event_type_list = entry["properties"]["Event Type"]["multi_select"]
+    if event_type_list:
+        event_type = ", ".join(tag["name"] for tag in event_type_list)
+    else:
+        event_type = "No Event Type"
+
 
     # Format date for today tasks
     formatted_date_today = f"{date_start.strftime('%Y/%m/%d %I:%M %p')} → {date_end}" if date_start else "No Start Time"
